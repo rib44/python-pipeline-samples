@@ -5,7 +5,7 @@ pipeline:
   orgIdentifier: default
   stages:
     - stage:
-        name: Build
+        name: Build test and run
         identifier: Build
         type: CI
         spec:
@@ -19,12 +19,89 @@ pipeline:
                   spec:
                     shell: Sh
                     command: echo "Welcome to Harness CI"
+              - step:
+                  type: Run
+                  name: code compilation
+                  identifier: code_compilation
+                  spec:
+                    connectorRef: docker_quickstart_connector
+                    image: python:3.10.6-alpine
+                    shell: Sh
+                    command: python -m compileall ./
+              - step:
+                  type: Run
+                  name: Create docker-file
+                  identifier: Create_dockerfile
+                  spec:
+                    connectorRef: docker_quickstart_connector
+                    image: alpine
+                    shell: Sh
+                    command: |+
+                      touch pythondockerfile
+                      cat > pythondockerfile <<- EOM
+                      FROM python:3.10.6-alpine
+                      WORKDIR /python-pipeline-samples
+                      ADD . /python-pipeline-samples
+                      RUN pip install -r requirements.txt
+                      CMD ["python" , "app.py"]
+                      EOM
+                      cat pythondockerfile
+
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: build and push to the docker registry
+                  identifier: build_and_push_to_the_docker_registry
+                  spec:
+                    connectorRef: docker_quickstart_connector
+                    repo: mistiquer/pythonsample-harness
+                    tags:
+                      - latest
+                    dockerfile: pythondockerfile
           platform:
             os: Linux
             arch: Amd64
           runtime:
             type: Docker
             spec: {}
+          caching:
+            enabled: false
+            paths: []
+        description: ""
+    - stage:
+        name: integration test
+        identifier: integration_test
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: false
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Docker
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Background
+                  name: python server
+                  identifier: python_server
+                  spec:
+                    connectorRef: docker_quickstart_connector
+                    image: mistiquer/pythonsample-harness
+                    shell: Sh
+                    command: python3 /python-pipeline-samples/app.py
+              - step:
+                  type: Run
+                  name: test connection to the server
+                  identifier: test_connection_to_the_server
+                  spec:
+                    connectorRef: docker_quickstart_connector
+                    image: curlimages/curl:7.73.0
+                    shell: Sh
+                    command: |-
+                      sleep 10
+                      curl localhost:5000
   properties:
     ci:
       codebase:
