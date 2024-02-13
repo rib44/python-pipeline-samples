@@ -1,0 +1,14 @@
+inputSet:
+  name: Build_rib44_python_pipeline_samples_1707829214108-push-trigger-input-set
+  identifier: Build_rib44_python_pipeline_samples_1707829214108pushtriggerinputset
+  orgIdentifier: default
+  projectIdentifier: pythondemo
+  pipeline:
+    identifier: Build_rib44_python_pipeline_samples_1707829214108
+    properties:
+      ci:
+        codebase:
+          build:
+            type: branch
+            spec:
+              branch: <+trigger.branch>
